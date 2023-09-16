@@ -65,10 +65,14 @@ Token *Token_New(TokenType type,char *text) {
 
 
 void Token_Free(void **token) {
-  free(((Token*)token)->text);
-  ((Token*)token)->text=NULL;
-  free(*token);
-  *token=NULL;
+  if((Token*)token) {
+    if(((Token*)token)->text) {
+      free(((Token*)token)->text);
+      ((Token*)token)->text=NULL;
+    }
+    free(*token);
+    *token=NULL;
+  }
 }
 
 

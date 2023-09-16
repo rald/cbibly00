@@ -136,6 +136,7 @@ void Cite_Print(Array *infos,Cite *cite) {
 
 void Cites_Print(Array *infos,Array *cites) {
   size_t i;
+  printf("\n");
   for(i=0;i<cites->n;i++) {
     Cite_Print(infos,A(cites,i,Cite*));
   }

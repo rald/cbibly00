@@ -55,22 +55,30 @@ Info *Info_New() {
 
 void Info_Free(void **info) {
 
-	free(((Info*)info)->bname);
-	((Info*)info)->bname=NULL;
+  if((Info*)info) {
 
-	Array_Free(&((Info*)info)->bsnames,tokfree);
-	((Info*)info)->bnum=0;
+    if(((Info*)info)->bname) {
+    	free(((Info*)info)->bname);
+    	((Info*)info)->bname=NULL;
+    }
 
-	Array_Free(&((Info*)info)->verscnt,verscntFree);
-	((Info*)info)->verscnt->n=0;
+  	Array_Free(&((Info*)info)->bsnames,tokfree);
+  	((Info*)info)->bnum=0;
 
- 	free(*info);
-	*info=NULL;
+  	Array_Free(&((Info*)info)->verscnt,verscntFree);
+
+  	((Info*)info)->verscnt->n=0;
+
+   	free(*info);
+  	*info=NULL;
+	}
 }
 
 void verscntFree(void **data) {
-  free(*data);
-  *data=NULL;
+  if(*data) {
+    free(*data);
+    *data=NULL;
+  }
 }
 
 
