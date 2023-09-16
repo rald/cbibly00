@@ -1,35 +1,39 @@
 #ifndef INFO_H
 #define INFO_H
 
-
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
 #define STRUTIL_IMPLEMENTATION
 #include "strutil.h"
+
+#define ARRAY_IMPLEMENTATION
+#include "array.h"
 
 
 
 typedef struct Info Info;
 
 struct Info {
-  char *bname;
-  char **bsnames;
-  size_t nbsnames;
   size_t bnum;
-  size_t nchap;
-  size_t *nvers;
+  char *bname;
+  Array *bsnames;
+  Array *verscnt;
 };
-
 
 
 Info *Info_New();
 
-void Infos_Free(Info ***infos,size_t *ninfos);
+void Info_Free(void **info);
 
-void Info_Append(Info ***infos,size_t *ninfos,Info *info);
+void Info_Append(Array *infos,Info *info);
 
-void Info_Load(Info ***infos,size_t *ninfos,char *filename);
+void Info_Load(Array *infos,char *filename);
 
-void Info_Print(Info **infos,size_t ninfos);
+void Info_Print(Info *info);
+
+void verscntFree(void **data);
 
 
 
@@ -40,84 +44,83 @@ void Info_Print(Info **infos,size_t ninfos);
 Info *Info_New() {
   Info *info=malloc(sizeof(*info));
   if(info) {
-    info->bname=NULL;
-    info->bsnames=NULL;
-    info->nbsnames=0;
     info->bnum=0;
-    info->nchap=0;
-    info->nvers=NULL;    
+    info->bname=NULL;
+    info->bsnames=Array_New(0,Info*);
+    info->verscnt=Array_New(0,Info*);
   }
   return info;
 }
 
 
-void Infos_Free(Info ***infos,size_t *ninfos) {
-	for(size_t i=0;i<*ninfos;i++) {
-		free((*infos)[i]->bname);
-		(*infos)[i]->bname=NULL;
+void Info_Free(void **info) {
 
-		tokfree(&(*infos)[i]->bsnames,&(*infos)[i]->nbsnames);
+	free(((Info*)info)->bname);
+	((Info*)info)->bname=NULL;
 
-		(*infos)[i]->bnum=0;
+	Array_Free(&((Info*)info)->bsnames,tokfree);
+	((Info*)info)->bnum=0;
 
-		free((*infos)[i]->nvers);
-		(*infos)[i]->nvers=NULL;
+	Array_Free(&((Info*)info)->verscnt,verscntFree);
+	((Info*)info)->verscnt->n=0;
 
-		(*infos)[i]->nchap=0;
-		
-	 	free((*infos)[i]);;
-		(*infos)[i]=NULL;
-	}
-	free(*infos);
-	*infos=NULL;
-	*ninfos=0;
+ 	free(*info);
+	*info=NULL;
+}
+
+void verscntFree(void **data) {
+  free(*data);
+  *data=NULL;
+}
+
+
+void Info_Append(Array *infos,Info *info) {
+  Array_Push(infos,info,Info*);
 }
 
 
 
-void Info_Append(Info ***infos,size_t *ninfos,Info *info) {
-  (*infos)=realloc(*infos,sizeof(**infos)*((*ninfos)+1));
-  (*infos)[(*ninfos)++]=info;
-}
+void Info_Load(Array *infos,char *filename) {
 
-
-
-void Info_Load(Info ***infos,size_t *ninfos,char *filename) {
-  FILE *fp=fopen(filename,"r");
+  FILE *fp=NULL;
 
   char *line=NULL;
   size_t llen=0;
   ssize_t rlen=0;
- 
+
+  size_t i;
+
+  if((fp=fopen(filename,"r"))==NULL) die(1,"Error: Info_Load: fopen: %s",strerror(errno));
+
   while((rlen=getline(&line,&llen,fp))!=-1) {
 
-	  char **tokens0=NULL;
-	  size_t ntokens0=0;
-	  char **tokens1=NULL;
-	  size_t ntokens1=0;
-   
-    tokenize(&tokens0,&ntokens0,line,"|");
+	  Array *tokens0=NULL;
+	  Array *tokens1=NULL;
+
+    tokens0=tokenize(line,"|");
 
     Info *info=Info_New();
 
-    info->bname=strdup(tokens0[0]);
+    info->bname=strdup(A(tokens0,0,char*));
 
-    tokenize(&info->bsnames,&info->nbsnames,tokens0[1],"/");
-    info->bnum=atoi(tokens0[2]);
-    info->nchap=atoi(tokens0[3]);
-    
-    tokenize(&tokens1,&ntokens1,tokens0[4],",");
+    info->bsnames=tokenize(A(tokens0,1,char*),"/");
 
-    info->nvers=malloc(sizeof(*info->nvers)*info->nchap);
+    info->bnum=atoi(A(tokens0,2,char*));
 
-    for(size_t i=0;i<info->nchap;i++) {
-      info->nvers[i]=atoi(tokens1[i]);
+    tokens1=tokenize(A(tokens0,4,char*),",");
+
+    info->verscnt=Array_New(atoi(A(tokens0,3,char*)),size_t);
+
+    for(i=0;i<atoi(A(tokens0,3,char*));i++) {
+      size_t *j=malloc(sizeof(*j));
+      *j=(size_t)atoi(A(tokens1,i,char*));
+      A(info->verscnt,i,size_t*)=j;
     }
-    
-    Info_Append(infos,ninfos,info);
-    
-    tokfree(&tokens1,&ntokens1);
-    tokfree(&tokens0,&ntokens0);
+
+    Info_Append(infos,info);
+
+    Array_Free(&tokens1,tokfree);
+    Array_Free(&tokens0,tokfree);
 
 		free(line);
 	 	line=NULL;
@@ -131,31 +134,39 @@ void Info_Load(Info ***infos,size_t *ninfos,char *filename) {
   rlen=0;
 
 	fclose(fp);
-  
+
 }
 
 
 
-void Info_Print(Info **infos,size_t ninfos) {
-  for(size_t i=0;i<ninfos;i++) {
-    printf("%s|",infos[i]->bname);
-    for(size_t j=0;j<infos[i]->nbsnames;j++) {
+void Infos_Print(Array *infos) {
+  size_t i,j;
+
+  for(i=0;i<infos->n;i++) {
+    printf("%s|",A(infos,i,Info*)->bname);
+
+    for(j=0;j<A(infos,i,Info*)->bsnames->n;j++) {
       if(j!=0) printf("/");
-      printf("%s",infos[i]->bsnames[j]);
+      printf("%s",A(A(infos,i,Info*)->bsnames,j,char*));
     }
-    printf("|%zu|%zu|",infos[i]->bnum,infos[i]->nchap);
-    for(size_t j=0;j<infos[i]->nchap;j++) {
+
+    printf("|%zu|%zu|",A(infos,i,Info*)->bnum,A(infos,i,Info*)->verscnt->n);
+
+    for(j=0;j<A(infos,i,Info*)->verscnt->n;j++) {
       if(j!=0) printf(",");
-      printf("%zu",infos[i]->nvers[j]);
+      printf("%zu",A(A(infos,i,Info*)->verscnt,j,size_t));
     }
+
     printf("\n");
   }
 }
+
 
 
 #endif /* INFO_IMPLEMENTATION */
 
 
 
-#endif /* IMFO_H */
+#endif /* INFO_H */
+
 

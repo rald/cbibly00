@@ -7,9 +7,21 @@
 
 
 
+#define STRINGIZE_NX(A) #A
+#define STRINGIZE(A) STRINGIZE_NX(A)
+#define PPCAT_NX(A,B) A ## B
+#define PPCAT(A,B) PPCAT_NX(A,B)
+
+
+
+#define ARRAY_IMPLEMENTATION
+#include "array.h"
+
+
+
 char *trim(char *a);
-void tokenize(char ***tokens,size_t *ntokens,char *s,char *d);
-void tokfree(char ***tokens,size_t *ntokens);
+Array *tokenize(char *s,char *d);
+void tokfree(void **token);
 char *rmnl(char *s);
 char *rmcrnl(char *s);
 char *skip(char *s, char c);
@@ -35,27 +47,33 @@ char *trim(char *a) {
 
 
 
-void tokenize(char ***tokens,size_t *ntokens,char *s,char *d) {
+Array *tokenize(char *s,char *d) {
+  Array *tokens=Array_New(0,char*);
   char *token=strtok(s,d);
   while(token) {
-    *tokens=realloc(*tokens,sizeof(**tokens)*(*ntokens+1));
-    (*tokens)[(*ntokens)++]=token?strdup(token):NULL;
+    Array_Push(tokens,token?strdup(token):NULL,char*);
     token=strtok(NULL,d);
   }
+  return tokens;
 }
 
 
 
-void tokfree(char ***tokens,size_t *ntokens) {
-  for(size_t i=0;i<*ntokens;i++) {
-    if((*tokens)[i]) {
-    	free((*tokens)[i]);
+void tokfree(void **token) {
+  free(*token);
+  *token=NULL;
+}
+
+
+
+void tokprint(Array *tokens) {
+  int i;
+  if(tokens) {
+    for(i=0;i<tokens->n;i++) {
+      puts(A(tokens,i,char*));
     }
-    (*tokens)[i]=NULL;
+    printf("\n");
   }
-  free(*tokens);
-  *tokens=NULL;
-  *ntokens=0;
 }
 
 

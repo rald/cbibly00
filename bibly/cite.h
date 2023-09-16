@@ -25,19 +25,19 @@ struct Cite {
   size_t scnum;
   size_t ecnum;
   size_t svnum;
-  size_t evnum;  
+  size_t evnum;
 };
 
 
 
 Cite *Cite_New(size_t bnum,size_t scnum,size_t ecnum,size_t svnum,size_t evnum);
 
-void Cites_Free(Cite ***cites,size_t *ncites);
-void Cite_Append(Cite ***cites,size_t *ncites,Cite *cite);
+void Cite_Free(void **cite);
+void Cite_Append(Array *cites,Cite *cite);
 
-void Cite_Print(Info **infos,size_t ninfos,Cite *cite);
+void Cite_Print(Array *infos,Cite *cite);
 
-void Cites_Print(Info **infos,size_t ninfos,Cite **cites,size_t ncites);
+void Cites_Print(Array *infos,Array *cites);
 
 
 
@@ -63,31 +63,21 @@ Cite *Cite_New(size_t bnum,size_t scnum,size_t ecnum,size_t svnum,size_t evnum) 
 
 
 
-void Cite_Free(Cite **cite) {
+void Cite_Free(void **cite) {
 	free(*cite);
 	*cite=NULL;
 }
 
 
 
-void Cites_Free(Cite ***cites,size_t *ncites) {
-  for(size_t i=0;i<*ncites;i++) {
-    Cite_Free(&(*cites)[i]);
-  }
-  free(*cites);
-  *cites=NULL;
-  *ncites=0;
+
+void Cite_Append(Array *cites,Cite *cite) {
+   Array_Push(cites,cite,Cite*);
 }
 
 
 
-void Cite_Append(Cite ***cites,size_t *ncites,Cite *cite) {  *cites=realloc(*cites,sizeof(**cites)*(*ncites+1));
-  (*cites)[(*ncites)++]=cite;
-}
-
-
-
-void Cite_Print(Info **infos,size_t ninfos,Cite *cite) {
+void Cite_Print(Array *infos,Cite *cite) {
 
   FILE *fp=fopen("kjv.csv","r");
 
@@ -95,7 +85,7 @@ void Cite_Print(Info **infos,size_t ninfos,Cite *cite) {
   size_t llen=0;
   ssize_t rlen=0;
 
-  char *bname=getbname(infos,ninfos,cite->bnum);
+  char *bname=getbname(infos,cite->bnum);
   size_t scnum=cite->scnum;
   size_t ecnum=cite->ecnum?cite->ecnum:scnum;
   size_t svnum=cite->svnum;
@@ -105,14 +95,14 @@ void Cite_Print(Info **infos,size_t ninfos,Cite *cite) {
 
 		rmnl(line);
 
-    char **tokens=NULL;
-    size_t ntokens=0;
-    tokenize(&tokens,&ntokens,line,"|");
+    Array *tokens=NULL;
 
-    char *hbname=tokens[0];
-    size_t hcnum=atoi(tokens[1]);
-    size_t hvnum=atoi(tokens[2]);
-    char *htext=tokens[3];
+    tokens=tokenize(line,"|");
+
+    char *hbname=A(tokens,0,char*);
+    size_t hcnum=atoi(A(tokens,1,char*));
+    size_t hvnum=atoi(A(tokens,2,char*));
+    char *htext=A(tokens,3,char*);
 
     if(
         strcasecmp(bname,hbname)==0 &&
@@ -120,12 +110,12 @@ void Cite_Print(Info **infos,size_t ninfos,Cite *cite) {
         (hcnum==scnum && hvnum>=svnum && hvnum<=evnum) ||
         (ecnum==0 && evnum==0 && hcnum==scnum && hvnum==svnum))
     ) {
-    
+
 			printf("%s %zu:%zu -> %s\n\n",hbname,hcnum,hvnum,htext);
 
     }
-    
-    tokfree(&tokens,&ntokens);
+
+    Array_Free(&tokens,tokfree);
 
 		free(line);
 		line=NULL;
@@ -139,14 +129,15 @@ void Cite_Print(Info **infos,size_t ninfos,Cite *cite) {
 	rlen=0;
 
 	fclose(fp);
- 
+
 }
 
 
 
-void Cites_Print(Info **infos,size_t ninfos,Cite **cites,size_t ncites) {
-  for(size_t i=0;i<ncites;i++) {
-    Cite_Print(infos,ninfos,cites[i]);
+void Cites_Print(Array *infos,Array *cites) {
+  size_t i;
+  for(i=0;i<cites->n;i++) {
+    Cite_Print(infos,A(cites,i,Cite*));
   }
 }
 

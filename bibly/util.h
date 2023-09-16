@@ -1,11 +1,15 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+
+
 #define _GNU_SOURCE
 
 #include <string.h>
 #include <math.h>
 #include <sys/types.h>
+
+
 
 #define INFO_IMPLEMENTATION
 #include "info.h"
@@ -13,8 +17,13 @@
 #define STRUTIL_IMPLEMENTATION
 #include "strutil.h"
 
-size_t getbnum(Info **infos,size_t ninfos,char *bname);
-char *getbname(Info **infos,size_t ninfos,size_t bnum);
+#define ARRAY_IMPLEMENTATION
+#include "array.h"
+
+
+
+size_t getbnum(Array *infos,char *bname);
+char *getbname(Array *infos,size_t bnum);
 void search(char *text);
 
 
@@ -23,16 +32,17 @@ void search(char *text);
 
 
 
-size_t getbnum(Info **infos,size_t ninfos,char *bname) {
+size_t getbnum(Array *infos,char *bname) {
+  size_t j,k;
   if(bname && *bname) {
-    for(size_t j=0;j<ninfos;j++) {
-      if(strcasecmp(bname,infos[j]->bname)==0) {
-        return infos[j]->bnum;
+    for(j=0;j<infos->n;j++) {
+      if(strcasecmp(bname,A(infos,j,Info*)->bname)==0) {
+        return A(infos,j,Info*)->bnum;
       }
-      for(size_t k=0;k<infos[j]->nbsnames;k++) {
-        if(strcasecmp(bname,infos[j]->bsnames[k])==0) {
-          return infos[j]->bnum;
-        }      
+      for(k=0;k<A(infos,j,Info*)->bsnames->n;k++) {
+        if(strcasecmp(bname,A(A(infos,j,Info*)->bsnames,k,char*))==0) {
+          return A(infos,j,Info*)->bnum;
+        }
       }
     }
   }
@@ -41,10 +51,11 @@ size_t getbnum(Info **infos,size_t ninfos,char *bname) {
 
 
 
-char *getbname(Info **infos,size_t ninfos,size_t bnum) {
-  for(size_t j=0;j<ninfos;j++) {
-    if(bnum==infos[j]->bnum) {
-      return infos[j]->bname;
+char *getbname(Array *infos,size_t bnum) {
+  size_t j;
+  for(j=0;j<infos->n;j++) {
+    if(bnum==A(infos,j,Info*)->bnum) {
+      return A(infos,j,Info*)->bname;
     }
   }
   return NULL;
@@ -55,7 +66,6 @@ char *getbname(Info **infos,size_t ninfos,size_t bnum) {
 void search(char *text) {
 
 	trim(text);
-
  	if(text && *text) {
 
 		FILE *fp=fopen("kjv.csv","r");
@@ -65,18 +75,17 @@ void search(char *text) {
 		ssize_t rlen=0;
 
 		while((rlen=getline(&line,&llen,fp))!=-1) {
-			char **tokens=NULL;	
-		 	size_t ntokens=0;
+			Array *tokens=Array_New(0,Token*);
 
 			rmnl(line);
 			trim(line);
 
-			tokenize(&tokens,&ntokens,line,"|");
+			tokens=tokenize(line,"|");
 
-			char *bname=tokens[0];
-			size_t cnum=atoi(tokens[1]);
-			size_t vnum=atoi(tokens[2]);
-			char *vers=tokens[3];
+			char *bname=A(tokens,0,char*);
+			size_t cnum=atoi(A(tokens,1,char*));
+			size_t vnum=atoi(A(tokens,2,char*));
+			char *vers=A(tokens,3,char*);
 
 			char passage[1024];
 
@@ -87,8 +96,7 @@ void search(char *text) {
 				printf("%s %zu:%zu -> %s\n\n",bname,cnum,vnum,vers);
 			}
 
-			tokfree(&tokens,&ntokens);
-
+			Array_Free(&tokens,tokfree);
 			free(line);
 			line=NULL;
 			llen=0;
@@ -105,6 +113,13 @@ void search(char *text) {
 	}
 }
 
-#endif
 
-#endif
+
+#endif /* UTIL_IMPLEMEMTATION */
+
+
+
+#endif /* UTIL_H */
+
+
+
