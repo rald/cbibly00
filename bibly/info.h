@@ -62,12 +62,17 @@ void Info_Free(void **info) {
     	((Info*)info)->bname=NULL;
     }
 
-  	Array_Free(&((Info*)info)->bsnames,tokfree);
+    if(((Info*)info)->bsnames) {
+  	  Array_Free(&((Info*)info)->bsnames,tokfree);
+      ((Info*)info)->bsnames->n=0;
+  	}
+
   	((Info*)info)->bnum=0;
 
-  	Array_Free(&((Info*)info)->verscnt,verscntFree);
-
-  	((Info*)info)->verscnt->n=0;
+    if(((Info*)info)->verscnt) {
+  	  Array_Free(&((Info*)info)->verscnt,verscntFree);
+      ((Info*)info)->verscnt->n=0;
+   	}
 
    	free(*info);
   	*info=NULL;

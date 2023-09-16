@@ -60,8 +60,10 @@ Array *tokenize(char *s,char *d) {
 
 
 void tokfree(void **token) {
-  free(*token);
-  *token=NULL;
+  if(*token) {
+    free(*token);
+    *token=NULL;
+  }
 }
 
 
